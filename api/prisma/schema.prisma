@@ -1,0 +1,36 @@
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+//Entidade 1: Produto
+model Product{
+  id        String   @id
+  title     String
+  thumbnail String
+  permalink String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  priceLogs PriceLog[]
+
+}
+
+//Entidade 2: Histórico de preços
+model PriceLog{
+  id        String    @id @default(uuid())
+  price     Float
+  createdAt DateTime  @default(now())
+
+  productId String
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+
+}
