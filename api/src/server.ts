@@ -1,32 +1,23 @@
-import 'dotenv/config'; 
-import express, { Request, Response } from 'express';
-import cors from 'cors';
-import { MercadoLivreScraper } from './services/MercadoLivreScraper';
+// src/server.ts
+import "dotenv/config";
+import express, { Request, Response, NextFunction } from "express";
+import cors from "cors";
 
-const app = express();
+import { routes } from "./routes";
+
 const PORT = process.env.PORT || 3001;
+const app = express();
 
 app.use(cors());
-app.use(express.json())
+app.use(express.json());
+app.use(routes);
 
-
-app.get('/ping', (req: Request, res: Response) => {
-    res.status(200).send('pong');
+// Middleware global de tratamento de erros
+app.use((error: any, request: Request, response: Response, _: NextFunction) => {
+  return response.status(error.status || 500).json({
+    status: "error",
+    message: error.message || "Erro interno do servidor",
+  });
 });
 
-app.post('/api/scrape', async (req: Request, res: Response): Promise<void> => {
-  try {
-      //req.body contém o objeto { "url": "..." }
-      const result = await MercadoLivreScraper.scrape(req.body);
-      
-      //Retorna HTTP 200 (Success) e fecha a conexão do Insomnia
-      res.status(200).json(result);
-  } catch (error: any) {
-      //Retorna HTTP 400 (Bad Request) caso o Regex falhe ou a API recuse
-      res.status(400).json({ status: 'error', message: error.message });
-  }
-});
-  
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
