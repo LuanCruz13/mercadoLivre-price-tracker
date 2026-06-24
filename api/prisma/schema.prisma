@@ -33,3 +33,11 @@ model PriceLog{
   @@index([productId])
 
 }
+
+model SystemConfig{
+  id        String    @id @default(uuid())
+  key       String    @unique
+  value     String    //token salov em formato json 
+  updatedAt DateTime  @updatedAt
+}
+
