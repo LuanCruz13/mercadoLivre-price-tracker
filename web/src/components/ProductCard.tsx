@@ -11,9 +11,9 @@ export function ProductCard({ product }: ProductCardProps){
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col gap-4 hover:shadow-md transition-shadow">
             <div className="flex gap-4 items-start">
                 <div className="w-24 h-24 shrink-0 rounded-xl overflow-hidden bg-white flex items-center justify-center border border-gray-100">
-                    {product.imageUrl ? (
+                    {product.thumbnail ? (
                         <img 
-                            src={product.imageUrl} 
+                            src={product.thumbnail} 
                             alt={product.title || "Produto"} 
                             className="object-contain w-full h-full p-2" 
                         />

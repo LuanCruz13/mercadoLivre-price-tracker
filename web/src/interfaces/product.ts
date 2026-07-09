@@ -8,7 +8,7 @@ export interface Product {
     id: string;
     permalink: string;
     title: string | null;
-    imageUrl: string | null;
+    thumbnail: string | null;
     currentPrice: number | null;
     history?: PriceHistory[];
 }
