@@ -48,22 +48,27 @@ class ProductsController {
 
   async index(request: Request, response: Response, next: NextFunction){
     try{
+      //busca c/ join automático para trazer os produtos já com histórico anexado
       const products = await prisma.product.findMany({
         orderBy: { updatedAt: "desc"},
+        include: {
+          priceLogs: {
+            orderBy: {createdAt: "desc"}
+          }
+        }
       });
 
-      const productsWithPrice = await Promise.all(
-        products.map(async (prod) => {
-          const latestPrice = await prisma.priceLog.findFirst({
-            where: { productId: prod.id},
-            orderBy: { createdAt: "desc"},
-          });
+      //formatação da resposta bater com a interface do front-end
+      const productsWithPrice = products.map((prod) => {
           return {
-            ...prod,
-            currentPrice: latestPrice?.price || null,
+            id: prod.id,
+            title: prod.title,
+            thumbnail: prod.thumbnail,
+            permalink: prod.permalink,
+            currentPrice: prod.priceLogs.length > 0 ? prod.priceLogs[0].price: null,
+            history: prod.priceLogs
           };
-        })
-      );
+        });
 
       return response.status(200).json(productsWithPrice);
 
