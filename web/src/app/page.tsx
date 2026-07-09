@@ -1,33 +1,76 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, Activity, Link as LinkIcon } from "lucide-react";
+
+import { Header } from "@/components/Header";
+import { SearchBar } from "@/components/SearchBar";
+
+import { Product } from "@/interfaces/product";
+import { Loader2 } from "lucide-react";
+
+import { api } from "@/services/api";
+import { ProductCard } from "@/components/ProductCard";
 
 
 export default function Home() {
-  const [url, setUrl] = useState("");
+  
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleTrack = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("URL pronta para envio:", url);
-  }
+  const fetchProducts = async () => {
+    try {
+      setIsLoading(true);
+      const response = await api.get("/products");
+      setProducts(response.data);
+      console.log(response.data);
+    } catch (error){
+      console.error("Erro ao buscar produtos:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
 
   return (
     <main className="min-h-screen bg-[#F8FAFC]">
-      {/* header */}
-      <header className="bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-5xl mx-auto px-6 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-blue-600">
-            <Activity strokeWidth={2.5} size={28} />
-            <h1 className="text-xl font-bold tracking-tight text-slate-800">
-              Price <span>Tracker</span>
-            </h1>
+      
+      <Header/>
+      <SearchBar onProductTracked={fetchProducts} />
+
+      <section className="max-w-5xl mx-auto px-6 mt-8">
+        <h3 className="text-xl font-bold text-slate-800 mb-6 border-b border-gray-200 pb-2 inline-block">
+          Produtos Monitorados
+        </h3>
+
+        {isLoading ?  (
+          <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+            <Loader2 size={32} className="animate-spin text-blue-600 mb-4"/>
+            <p>Carregando sua vitrine...</p>
           </div>
-        </div>
-      </header>
+        ) : products.length === 0 ? (
+          <div className="">
+            <p>Nenhum produto registrado ainda</p>
+            <p>Cole um link acima para começar!</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {products.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        )}
+      </section>
+
+
+
 
       {/* Busca - Pesquisa*/}
-      <section className="max-w-3xl mx-auto px-6 pt-20 pb-12 text-center">
+      {/* <section className="max-w-3xl mx-auto px-6 pt-20 pb-12 text-center">
         <h2 className="text-3xl font-extrabold text-slate-800 mb-4 tracking-tight">Cole o link. Nós vigiamos o preço.</h2>
         <p className="text-slate-500 mb-8 text-lg">Acompanhe o histórico real de produtos do Mercado Livre e fuja de falsas promoções</p>
 
@@ -56,7 +99,7 @@ export default function Home() {
               <span>Rastrear</span>
           </button>
         </form>
-      </section>
+      </section> */}
 
     </main>
   );

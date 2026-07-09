@@ -6,7 +6,7 @@ export interface PriceHistory{
 
 export interface Product {
     id: string;
-    url: string;
+    permalink: string;
     title: string | null;
     imageUrl: string | null;
     currentPrice: number | null;
