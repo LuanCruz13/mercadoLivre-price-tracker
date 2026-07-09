@@ -34,7 +34,7 @@ export function ProductCard({ product }: ProductCardProps){
 
             <div className="pt-4 border-t border-gray-50 flex items-center justify-between">
                      <span className="text-xs text-gray-400">
-                        Registro(s) de preço
+                        {product.history?.length || 0 } Registro(s) de preço
                      </span>
                      <a 
                         href={product.permalink || "https://www.mercadolivre.com.br"}
