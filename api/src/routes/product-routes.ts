@@ -8,6 +8,7 @@ const productsController = new ProductsController();
 productsRoutes.post("/", productsController.create);
 
 productsRoutes.get("/", productsController.index);
+productsRoutes.get("/:id", productsController.show);
 productsRoutes.get("/:id/history", productsController.history);
 
 export { productsRoutes };

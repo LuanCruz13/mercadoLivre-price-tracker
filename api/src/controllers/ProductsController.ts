@@ -77,6 +77,39 @@ class ProductsController {
     }
   }
 
+  async show(request: Request, response: Response, next: NextFunction){
+    try{
+      const id = String(request.params.id);
+
+      const product = await prisma.product.findUnique({
+        where: {id},
+        include: {
+          priceLogs: {
+            orderBy: {createdAt: "asc"}
+          }
+        }
+      });
+
+      if (!product){
+        return response.status(404).json({ message: "Produto não encontrado. "});
+      }
+
+      const formattedProduct = {
+        id: product.id,
+        title: product.title,
+        thumbnail: product.thumbnail,
+        permalink: product.permalink,
+        currentPrice: product.priceLogs.length > 0 ? product.priceLogs[product.priceLogs.length -1].price: null,
+        history: product.priceLogs
+      }
+
+      return response.status(200).json(formattedProduct);
+
+    } catch (error){
+      next(error);
+    }
+  }
+
   async history(request: Request, response: Response, next: NextFunction){
     try{
       const id = String(request.params.id);
