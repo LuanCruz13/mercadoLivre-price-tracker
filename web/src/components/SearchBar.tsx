@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Link as LinkIcon, Loader2 } from "lucide-react";
+import { Search, Link as LinkIcon, Loader2, AlertCircle } from "lucide-react";
 import { api } from "@/services/api";
 
 interface SearchBarProps{
@@ -13,20 +13,41 @@ export function SearchBar({ onProductTracked }: SearchBarProps){
     
     const [url, setUrl] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleTrack = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!url) return;
+        setError(null);
+
+        let finalUrl = url.trim()
+
+        //validação: campo vazio
+        if (!finalUrl){
+            setError("Por favor, cole um link para rastrear.");
+            return;
+        }
+
+        //padronização: caso o usuário não digitar o protocólo http, o sistema adiciona para ele automaticamente
+        if (!finalUrl.startsWith("http://") && !finalUrl.startsWith("https://")){
+            finalUrl = `https://${finalUrl}`
+        }
+
+        //validação-2: Verifica se é um link oficial e válido do ML
+        if (!finalUrl.includes("mercadolivre.com.br") && !finalUrl.includes("mercadolivre.com")) {
+            setError("Ops! O link precisa ser de um produto do Mercado Livre.");
+            return;
+        }
+
 
         try {
             setIsLoading(true);
-            //Enviando o campo 'url' esperado pela API do back-end
-            await api.post("/products", { url });
+
+            await api.post("/products", { url: finalUrl });
             setUrl("");
             onProductTracked(); 
           } catch (error) {
             console.error("Erro ao rastrear produto:", error);
-            alert("Ocorreu um erro ao rastrear. Verifique o link e tente novamente.");
+            setError("Ocorreu um erro ao rastrear. Verifique o link e tente novamente.");
           } finally {
             setIsLoading(false);
         }
@@ -40,37 +61,52 @@ export function SearchBar({ onProductTracked }: SearchBarProps){
 
             <form
                 onSubmit={handleTrack}
-                className="relative flex items-center w-full max-w-2xl mx-auto bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-2 transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]"
+                className={`relative flex items-center w-full max-w-2xl mx-auto bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-2 transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] ${ error ? "border-red-400" : "border-gray-100"}`}
             >
                 <div className="flex items-center justify-center pl-4 pr-2 text-gray-400">
                     <LinkIcon size={20} />          
                 </div>
 
                 <input 
-                type="url" 
-                required 
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                disabled={isLoading}
-                placeholder="https://produto.mercadolivre.com.br/..."
-                className="flex-1 bg-transparent border-none py-3 px-2"
+                    type="text" 
+                    required 
+                    value={url}
+                    onChange={(e) => {
+                        setUrl(e.target.value);
+                        if(error) setError(null);
+                    }}
+                    disabled={isLoading}
+                    placeholder="https://produto.mercadolivre.com.br/..."
+                    className="flex-1 bg-transparent border-none py-3 px-2 focus:outline-none text-gray-700 placeholder-gray-400"
                 />
 
                 <button
                     type="submit"
                     disabled={isLoading}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl flex items-center gap-2 transition-colors disabled:opacity-70"
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl flex items-center gap-2 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                     {isLoading ? (
-                        <Loader2 size={18} className="animate-spin" />
+                        <span className="flex items-center gap-2">
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin">
+                                Buscando...
+                            </div>
+                        </span>
                     ): (
-                        <Search size={18} />
+                        <>
+                            <Search size={18} />
+                            <span>Rastrear</span>
+                        </>
                     )}
-                    <span className="hidden sm:inline">
-                        {isLoading ? "Rastreando..." : "Rastrear"}
-                    </span>
                 </button>
             </form>
+
+            {/* ERROR MESSAGE */}
+            {error && (
+                <div className="max-w-2xl mx-auto mt-3 text-red-500 text-sm flex items-center justify-center gap-2 font-medium transition-all">
+                    <AlertCircle size={16} />
+                    {error}
+              </div>
+            )}
         </section>
     );
 }
