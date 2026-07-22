@@ -6,6 +6,7 @@ const productsRoutes = Router();
 const productsController = new ProductsController();
 
 productsRoutes.post("/", productsController.create);
+productsRoutes.post("/sync", productsController.sync);
 
 productsRoutes.get("/", productsController.index);
 productsRoutes.get("/:id", productsController.show);

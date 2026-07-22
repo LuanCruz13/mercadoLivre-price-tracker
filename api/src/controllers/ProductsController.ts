@@ -152,6 +152,56 @@ class ProductsController {
       next(error);
     }
   }
+
+  async sync(request: Request, response: Response, next: NextFunction){
+    try{
+      
+      const products = await prisma.product.findMany();
+
+      if (products.length === 0){
+        return response.status(200).json({ message: "Nenhum produto para sincronizar."});
+      }
+
+      let updatedCount = 0;
+      let failedCount = 0;
+
+      for (const product of products){
+        try{
+
+          const scrapedData = await MercadoLivreScraper.scrape(product.permalink);
+          
+          await prisma.priceLog.create({
+            data: {
+              price: scrapedData.price,
+              productId: product.id
+            },
+          });
+
+          updatedCount++;
+
+        } catch (error){
+            console.error(`Falha ao sincronizar o produto ID ${product.id}: `, error);
+            failedCount++;
+        }
+      }
+
+      return response.status(200).json({
+        message: "Sincronização concluída com sucesso. ",
+        resume: {
+          total: products.length,
+          updated: updatedCount,
+          failed: failedCount
+        }
+      });
+
+    } catch (error) {
+      next(error);
+    }
+  }
+
+
+
+
 }
 
 export { ProductsController };
