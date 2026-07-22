@@ -48,34 +48,53 @@ class ProductsController {
 
   async index(request: Request, response: Response, next: NextFunction){
     try{
-      //busca c/ join automático para trazer os produtos já com histórico anexado
+      const page = Number(request.query.page) || 1;
+      const limit = Number(request.query.limit) || 12;
+
+      //verificando quantos produtos iremos pular
+      const skip = (page - 1) * limit;
+
       const products = await prisma.product.findMany({
-        orderBy: { updatedAt: "desc"},
+        take:limit,
+        skip: skip,
+        orderBy: [
+          {createdAt: "desc"},
+          { id: "desc"}
+        ],
         include: {
           priceLogs: {
-            orderBy: {createdAt: "desc"}
+            orderBy: { createdAt: "asc"}
           }
         }
       });
 
-      //formatação da resposta bater com a interface do front-end
-      const productsWithPrice = products.map((prod) => {
-          return {
-            id: prod.id,
-            title: prod.title,
-            thumbnail: prod.thumbnail,
-            permalink: prod.permalink,
-            currentPrice: prod.priceLogs.length > 0 ? prod.priceLogs[0].price: null,
-            history: prod.priceLogs
-          };
-        });
+      const totalItems = await prisma.product.count();
+      const hasMore = skip + products.length < totalItems;
 
-      return response.status(200).json(productsWithPrice);
+      const formattedProducts = products.map((product) => ({
+        id: product.id,
+        title: product.title,
+        thumbnail: product.thumbnail,
+        permalink: product.permalink,
 
+        currentPrice: product.priceLogs.length > 0 ? product.priceLogs[product.priceLogs.length - 1].price : null,
+
+        history: product.priceLogs
+      }));
+
+      return response.status(200).json({
+        data: formattedProducts,
+        meta: {
+          currentPage: page,
+          totalItems,
+          hasMore
+        }
+      });
     } catch (error){
       next(error);
     }
   }
+
 
   async show(request: Request, response: Response, next: NextFunction){
     try{
