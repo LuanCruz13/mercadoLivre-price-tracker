@@ -18,16 +18,38 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProducts = async () => {
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+
+
+  const fetchProducts = async (pageToFetch = 1, isLoadMore = false) => {
     try {
-      setIsLoading(true);
-      const response = await api.get("/products");
-      setProducts(response.data);
-      console.log(response.data);
+      if (isLoadMore){
+        setIsLoadingMore(true);
+      } else {
+        setIsLoading(true);
+      }     
+      const response = await api.get(`/products?page=${pageToFetch}&limit=12`);
+      
+      const newProducts = response.data.data;
+      const paginationMeta = response.data.meta;
+
+      if (isLoadMore){
+        setProducts((prevProducts) => [...prevProducts, ...newProducts]);
+      } else {
+        setProducts(newProducts);
+      }
+
+      setHasMore(paginationMeta.hasMore);
+      setPage(pageToFetch);
+
     } catch (error){
       console.error("Erro ao buscar produtos:", error);
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
     }
   };
 
@@ -40,7 +62,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#F8FAFC]">
       
       <Header/>
-      <SearchBar onProductTracked={fetchProducts} />
+      <SearchBar onProductTracked={() => fetchProducts(1)} />
 
       <section className="max-w-5xl mx-auto px-6 mt-8">
         <h3 className="text-xl font-bold text-slate-800 mb-6 border-b border-gray-200 pb-2 inline-block">
@@ -58,15 +80,35 @@ export default function Home() {
             <p>Cole um link acima para começar!</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {products.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+
+            {/* */}
+            {hasMore && (
+              <div className="flex justify-center mt-12">
+                <button
+                  onClick={() => fetchProducts(page + 1, true)}
+                  disabled={isLoadingMore}
+                  className="bg-white border border-gray-200 text-blue-600 hover:bg-blue-50 hover:border-blue-200 font-medium py-3 px-8 rounded-xl flex items-center gap-2 transition-all shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {isLoadingMore ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      Carregando...
+                    </>
+                  ) : (
+                    "Carregar mais produtos"
+                  )}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </section>
-
-
     </main>
   );
 }
