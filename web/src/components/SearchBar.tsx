@@ -65,7 +65,12 @@ export function SearchBar({ onProductTracked }: SearchBarProps){
             setIsSyncing(true);
             setSyncMessage(null);
 
-            const response = await api.post("/products/sync");
+            const response = await api.post("/products/sync", {}, {
+                headers: {
+                    'x-api-key': process.env.NEXT_PUBLIC_API_SECRET_KEY
+                }
+            });
+
             const { updated } = response.data.resume;
 
             setSyncMessage({ text: `${updated} produtos atualizados com sucesso`, type: "success"})
