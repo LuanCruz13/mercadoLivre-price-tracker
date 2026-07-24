@@ -8,6 +8,15 @@ interface ProductCardProps{
 }
 
 export function ProductCard({ product }: ProductCardProps){
+
+    const uniqueDaysCount = new Set(
+        
+        (product.history || []).map((item: { createdAt: string | number | Date; }) =>
+            new Date(item.createdAt).toLocaleDateString("pt-BR")
+        )
+    ).size;
+
+
     return(
         
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col gap-4 hover:shadow-md transition-shadow">
@@ -38,7 +47,7 @@ export function ProductCard({ product }: ProductCardProps){
 
                     <div className="pt-4 border-t border-gray-50 flex items-center justify-between">
                             <span className="text-xs text-gray-400">
-                                {product.history?.length || 0 } Registro(s)
+                             {uniqueDaysCount} Registro(s)
                             </span>
                             <span className="text-blue-500 hover:text-blue-700 text-sm font-medium flex items-center gap-1 transition-colors">
                                 Ver Detalhes
