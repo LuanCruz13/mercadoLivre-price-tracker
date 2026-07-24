@@ -155,6 +155,14 @@ class ProductsController {
 
   async sync(request: Request, response: Response, next: NextFunction){
     try{
+
+      const clientKey = request.headers['x-api-key'];
+
+      if (clientKey !== process.env.API_SECRET_KEY){
+        return response.status(401).json({
+          error: "Acesso não autorizado."
+        });
+      }
       
       const products = await prisma.product.findMany();
 
