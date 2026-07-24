@@ -18,13 +18,21 @@ interface PriceChartProps{
 
 export function PriceChart({ data }: PriceChartProps) {
 
-    const chartData = data.map((item) => {
+    const groupedData = data.reduce((acc, item) => {
         const date = new Date(item.createdAt);
-        return{
+        const shortDate = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+
+        
+        acc[shortDate] = {
             ...item,
-            shortDate: date.toLocaleDateString("pt-BR", {day: "2-digit", month: "2-digit"})
+            shortDate
         };
-    });
+
+        return acc;
+    }, {} as Record<string, any>);
+
+
+    const chartData = Object.values(groupedData);
 
 
   return (
