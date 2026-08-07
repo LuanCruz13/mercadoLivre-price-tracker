@@ -16,7 +16,8 @@ export class MercadoLivreScraper {
             throw new Error('Formato de entrada inválido. É esperada uma URL em formato string.');
         }
 
-        const productMatch = targetUrl.match(/\/p\/(MLB\d+)/i);
+        // captura tanto /p/MLB... quanto /up/MLBU...
+        const productMatch = targetUrl.match(/\/(?:p|up)\/(MLB[A-Z0-9]+)/i);
         if (productMatch && productMatch[1]) {
             return { type: 'product', id: productMatch[1].toUpperCase() };
         }
@@ -50,14 +51,20 @@ export class MercadoLivreScraper {
         }
     }
 
-    // 3. O Curinga: O Verdadeiro Web Scraper (Bypass de WAF)
+    // 3. Web Scraper
     private static async fetchFrontendFallback(id: string, originalUrl: string) {
-        console.log(`🛡️ Acionando Fallback de Frontend (HTML) para contornar o WAF de novo...`);
+        console.log(`🛡️ Acionando Fallback de Frontend (HTML) para contornar o bloqueio...`);
         
-        // Se a URL original for um objeto ou falhar, montamos a rota padrão
-        const targetUrl = originalUrl.startsWith('http') ? originalUrl : `https://produto.mercadolivre.com.br/${id}`;
+        // limpa apenas os parâmetros dinâmicos e de rastreamento (tudo após # ou ?)
+        let targetUrl = originalUrl.split('#')[0].split('?')[0];
+        
+        // Segurança extra: se a URL for apenas um ID em um teste interno
+        if (!targetUrl.startsWith('http')) {
+            targetUrl = `https://produto.mercadolivre.com.br/${id}`;
+        }
 
-        // O disfarce perfeito: simulamos ser o robô indexador do Google
+        console.log(`🔗 Scraper acessando URL Canônica Limpa: ${targetUrl}`);
+
         const response = await axios.get(targetUrl, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
@@ -67,21 +74,40 @@ export class MercadoLivreScraper {
         
         const html = response.data;
 
-        // Extraímos os dados cirurgicamente do HTML (Open Graph e Microdata)
         const titleMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i) || html.match(/<title>([^<]+)<\/title>/i);
         const imageMatch = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i);
-        // Tenta pegar o preço da meta tag ou do script JSON-LD interno
-        const priceMatch = html.match(/<meta\s+itemprop="price"\s+content="([^"]+)"/i) || html.match(/"price":\s*(\d+(\.\d+)?)/i);
+        
+        let extractedPrice = 0;
 
-        if (!titleMatch || !priceMatch) {
-            throw new Error('Falha ao extrair os dados do anúncio via HTML Scrape.');
+        const metaPriceMatch = html.match(/<meta\s+itemprop="price"\s+content="([^"]+)"/i);
+        const ogPriceMatch = html.match(/<meta\s+property="product:price:amount"\s+content="([^"]+)"/i);
+        const jsonPriceMatch = html.match(/"price"\s*:\s*"?(\d+(\.\d+)?)"?/i);
+        const twitterPriceMatch = html.match(/<meta\s+name="twitter:data1"\s+content="R\$\s*([^"]+)"/i);
+        const visualPriceMatch = html.match(/class="andes-money-amount__fraction"[^>]*>([^<]+)/i);
+
+        if (metaPriceMatch) {
+            extractedPrice = parseFloat(metaPriceMatch[1]);
+        } else if (ogPriceMatch) {
+            extractedPrice = parseFloat(ogPriceMatch[1]);
+        } else if (jsonPriceMatch) {
+            extractedPrice = parseFloat(jsonPriceMatch[1]);
+        } else if (twitterPriceMatch) {
+            const cleanPrice = twitterPriceMatch[1].replace(/\./g, '').replace(',', '.');
+            extractedPrice = parseFloat(cleanPrice);
+        } else if (visualPriceMatch) {
+            const cleanPrice = visualPriceMatch[1].replace(/\./g, '').replace(',', '.');
+            extractedPrice = parseFloat(cleanPrice);
+        }
+
+        if (!titleMatch || extractedPrice === 0 || isNaN(extractedPrice)) {
+            console.error(`❌ Falha no Scraper. Preço final: ${extractedPrice}. URL processada: ${targetUrl}`);
+            throw new Error('Falha ao extrair os dados do anúncio. A estrutura do HTML do Mercado Livre pode ter mudado.');
         }
 
         return {
             id: id,
-            // Limpa o "- Mercado Livre" que vem no título do HTML
             title: titleMatch[1].replace(' - Mercado Livre', '').trim(),
-            price: parseFloat(priceMatch[1]),
+            price: extractedPrice,
             thumbnail: imageMatch ? imageMatch[1] : '',
             permalink: targetUrl
         };
@@ -101,7 +127,6 @@ export class MercadoLivreScraper {
                     data = productResponse.data;
                 } catch (apiError: any) {
                     const status = apiError.response?.status;
-                    // Se o WAF bloquear (401/403), ignoramos a API e lemos o HTML da página
                     if (status === 403 || status === 401) {
                         return await this.fetchFrontendFallback(entity.id, originalUrl);
                     } else {
@@ -110,10 +135,13 @@ export class MercadoLivreScraper {
                 }
 
                 let realPrice = 0;
+                
                 if (data.buy_box_winner?.item_id) {
                     try {
                         const itemResponse = await this.fetchMeliAPI(`https://api.mercadolibre.com/items/${data.buy_box_winner.item_id}`);
-                        realPrice = itemResponse.data.price;
+                        const itemData = itemResponse.data;
+                        // Proteção extra para itens de vestuário que podem usar base_price
+                        realPrice = itemData.price || itemData.base_price || 0;
                     } catch (e: any) {
                         const status = e.response?.status;
                         if (status === 403 || status === 401) {
@@ -121,6 +149,12 @@ export class MercadoLivreScraper {
                             realPrice = fallbackData.price;
                         }
                     }
+                }
+
+                if (realPrice === 0 || !realPrice) {
+                    console.log(`⚠️ Produto sem Buy Box acessível. Forçando Fallback de HTML...`);
+                    const fallbackData = await this.fetchFrontendFallback(entity.id, originalUrl);
+                    realPrice = fallbackData.price;
                 }
 
                 return {
@@ -138,10 +172,17 @@ export class MercadoLivreScraper {
                 const itemResponse = await this.fetchMeliAPI(`https://api.mercadolibre.com/items/${entity.id}`);
                 data = itemResponse.data;
                 
+                //Resiliência de preço para items
+                let itemPrice = data.price || data.base_price || 0;
+                if (!itemPrice || itemPrice === 0) {
+                    const fallbackData = await this.fetchFrontendFallback(entity.id, originalUrl);
+                    itemPrice = fallbackData.price;
+                }
+
                 return {
                     id: data.id,
                     title: data.title,
-                    price: data.price,
+                    price: itemPrice,
                     thumbnail: data.secure_thumbnail || data.thumbnail,
                     permalink: data.permalink
                 };
@@ -161,7 +202,6 @@ export class MercadoLivreScraper {
                 throw new Error(`O anúncio/produto ${entity.id} não está ativo ou foi removido.`);
             }
 
-            // Garante que qualquer outro erro suba com clareza
             throw new Error(error.response?.data?.message || error.message || 'Falha na extração de dados.');
         }
     }
