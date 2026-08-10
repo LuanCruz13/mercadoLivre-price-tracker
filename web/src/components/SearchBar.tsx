@@ -47,9 +47,15 @@ export function SearchBar({ onProductTracked }: SearchBarProps){
         try {
             setIsLoading(true);
 
-            await api.post("/products", { url: finalUrl });
+            await api.post("/products", { url: finalUrl }, {
+                headers: {
+                    'x-api-key': process.env.NEXT_PUBLIC_API_SECRET_KEY
+                }
+            });
+
             setUrl("");
-            onProductTracked(); 
+            onProductTracked();
+
           } catch (error) {
             console.error("Erro ao rastrear produto:", error);
             setError("Ocorreu um erro ao rastrear. Verifique o link e tente novamente.");
