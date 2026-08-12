@@ -12,6 +12,8 @@ import { Loader2 } from "lucide-react";
 import { api } from "@/services/api";
 import { ProductCard } from "@/components/ProductCard";
 
+import { Footer } from "@/components/Footer";
+
 
 export default function Home() {
   
@@ -59,12 +61,12 @@ export default function Home() {
 
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC]">
+    <main className="min-h-screen bg-[#F8FAFC] flex flex-col">
       
       <Header/>
       <SearchBar onProductTracked={() => fetchProducts(1)} />
 
-      <section className="max-w-5xl mx-auto px-6 mt-8">
+      <section className="max-w-5xl mx-auto w-full px-6 mt-8 pb-12">
         <h3 className="text-xl font-bold text-slate-800 mb-6 border-b border-gray-200 pb-2 inline-block">
           Produtos Monitorados
         </h3>
@@ -109,6 +111,8 @@ export default function Home() {
           </>
         )}
       </section>
+
+      <Footer />
     </main>
   );
 }
