@@ -16,8 +16,7 @@ export function SearchBar({ onProductTracked }: SearchBarProps){
     const [error, setError] = useState<string | null>(null);
 
     //sync
-    const [isSyncing, setIsSyncing] = useState(false);
-    const [syncMessage, setSyncMessage] = useState<{ text: string, type: "success" | "error"} | null>(null);
+   
 
 
     const handleTrack = async (e: React.FormEvent) => {
@@ -66,32 +65,6 @@ export function SearchBar({ onProductTracked }: SearchBarProps){
 
 
     //sync
-    const handleSync = async () => {
-        try {
-            setIsSyncing(true);
-            setSyncMessage(null);
-
-            const response = await api.post("/products/sync", {}, {
-                headers: {
-                    'x-api-key': process.env.NEXT_PUBLIC_API_SECRET_KEY
-                }
-            });
-
-            const { updated } = response.data.resume;
-
-            setSyncMessage({ text: `${updated} produtos atualizados com sucesso`, type: "success"})
-
-            //Recarregando a lista de produtos
-            onProductTracked();
-
-        } catch (error) {
-            console.error("Erro ao sincronizar produtos: ", error);
-
-            setSyncMessage({ text: "Falha ao sincronizar. Tente novamente mais tarde. ", type: "error"});
-        } finally {
-            setIsSyncing(false);
-        }
-    }
 
 
 
@@ -116,14 +89,14 @@ export function SearchBar({ onProductTracked }: SearchBarProps){
                         setUrl(e.target.value);
                         if(error) setError(null);
                     }}
-                    disabled={isLoading || isSyncing}
+                    disabled={isLoading}
                     placeholder="https://produto.mercadolivre.com.br/..."
                     className="flex-1 bg-transparent border-none py-3 px-2 focus:outline-none text-gray-700 placeholder-gray-400"
                 />
 
                 <button
                     type="submit"
-                    disabled={isLoading || isSyncing}
+                    disabled={isLoading}
                     className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl flex items-center gap-2 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                     {isLoading ? (
@@ -148,27 +121,6 @@ export function SearchBar({ onProductTracked }: SearchBarProps){
                     {error}
               </div>
             )}
-
-            {/* SYNC - Feedback and Button*/}
-            <div className="max-w-2xl mx-auto mt-6 flex flex-col items-center justify-center h-8">
-                {syncMessage ? (
-                    <div className={`text-sm flex items-center gap-2 font-medium animate-in fade-in slide-in-from-bottom-2 ${syncMessage.type === "success" ? "text-emerald-600" : "text-red-500"}`}>
-                        {syncMessage.type === "success" ? 
-                            <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-                        {syncMessage.text}
-                    </div>
-                ): (
-                    <button
-                        type="button"
-                        onClick={handleSync}
-                        disabled={isSyncing || isLoading}
-                        className="text-slate-400 hover:text-blue-600 text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        <RefreshCw size={14} className={isSyncing ? "animate-spin text-blue-600" : ""}/>
-                        {isSyncing ? "Sincronizando preços em segundo plano..." : "Sincronizar todos os preços agora"}
-                    </button>
-                )}
-            </div>
         </section>
     );
 }
